@@ -1,7 +1,0 @@
-apps:
-  - name: "telegram_bot_backend"
-    interpreter: "/root/apps/other/telegram_bots/venv/bin/python"
-    interpreter_args: "-u"
-    cwd: "/root/apps/other/telegram_bots/"
-    script: "lifestat_bot.py"
-    log_date_format: "YYYY-MM-DD HH:mm:ss.SSS"
