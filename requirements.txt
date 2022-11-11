@@ -1,0 +1,4 @@
+aiogram==2.23.*
+redis==4.3.*
+aioredis==2.0.*
+python-dotenv==0.21.*
