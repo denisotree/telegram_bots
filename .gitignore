@@ -1,3 +1,6 @@
 .idea
 .env*
 pm2_*
+
+venv
+**/__pycache__
