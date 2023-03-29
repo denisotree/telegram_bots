@@ -4,7 +4,6 @@ services:
     container_name: neural_signal_bot
     build: .
     restart: always
-    environment:
-      - RUNFILE=neural_signal_bot.py
     volumes:
       - ./data:/telegram-bots/data
+    command: ["python", "neural_signal_bot.py"]

@@ -13,7 +13,3 @@ RUN pip install -r ${ROOT_DIR}/requirements.txt
 # Copy source code
 
 COPY . ${ROOT_DIR}
-
-# Run the bot
-
-CMD ["python", "$RUNFILE"]
