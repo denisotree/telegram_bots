@@ -4,3 +4,5 @@ aioredis==2.0.*
 python-dotenv==0.21.*
 gTTS==2.3.1
 tqdm==4.65.0
+python-telegram-bot==20.2
+gTTS==2.3.1
