@@ -2,3 +2,5 @@ aiogram==2.23.*
 redis==4.3.*
 aioredis==2.0.*
 python-dotenv==0.21.*
+gTTS==2.3.1
+tqdm==4.65.0

@@ -4,3 +4,8 @@ pm2_*
 
 venv
 **/__pycache__
+
+data
+
+.idea
+.DS_Store
