@@ -10,9 +10,11 @@ import re
 from time import sleep
 import subprocess
 import asyncio
+import pickle
 
 from tqdm import tqdm
 from telegram import Bot
+import dbm
 
 from content.neural_signal_bot import DISCLAIMER
 from lib.gmail_client import GmailClient
@@ -112,14 +114,22 @@ class NeuralSignalBot:
             comparable_channel_names = [u.channel_post.chat for u in updates if u.channel_post]
             comparable_channel_ids = [c.id for c in comparable_channel_names if c.username == channel_name]
             if comparable_channel_ids:
-                return next(iter(comparable_channel_ids))
+                channel_id = next(iter(comparable_channel_ids))
+                return channel_id
             return 
 
     async def send_telegram_message(self, message: str, audiofile_name: str):
         
         bot = Bot(token=self.telegram_api_token)
         async with bot:
-            channel_id = await self.get_channel_id(self.channel_name)
+            with dbm.open('data/data.db', 'c') as db:
+                channel_id = db.get('channel_id')
+            if not channel_id:
+                channel_id = await self.get_channel_id(self.channel_name)
+                with dbm.open('data/data.db', 'c') as db:
+                    db['channel_id'] = pickle.dumps(channel_id)
+            else:
+                channel_id = pickle.loads(channel_id)
             audio_title_expression = re.compile(r'signal_#\d+. (?P<title>[A-Za-zА-Яа-я «»!?0-9]+).')
             audio_title = audio_title_expression.search(audiofile_name).group('title')
             with open(audiofile_name, 'rb') as af:
