@@ -34,7 +34,8 @@ class OperatorHelperBot:
                         306, 307, 308, 309, 310, 311, 318, 319, 332, 333, 334, 335, 340, 341, 342, 343, 348, 349, 350,
                         351, 352, 353, 354, 363, 369, 370, 371, 372, 373, 374, 375, 376, 377, 381, 387, 388, 389, 393,
                         394, 395, 397, 399, 401, 443, 457, 467],
-            'expay': [465, 466]
+            'expay': [465, 466],
+            'octopays': [402, 403, 404, 422, 423, 424, 425, 426, 427, 428, 429, 459, 460, 461, 462]
         }
 
     async def check_channel_id(self, message: types.Message):
@@ -72,6 +73,8 @@ class OperatorHelperBot:
                 pid_extract_schema = '$.operation.id'
             elif payment_method_id in self.payment_methods_map['expay']:
                 pid_extract_schema = '$.refer'
+            elif payment_method_id in self.payment_methods_map['octopays']:
+                pid_extract_schema = '$.data.internal_id'
             query = f'''
             SELECT id, 
                    cancel_reason_code,
