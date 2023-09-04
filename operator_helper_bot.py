@@ -67,8 +67,8 @@ class OperatorHelperBot:
         return result
 
     async def show_cancels(self, message: types.Message):
-        # if not await self.check_channel_id(message):
-        #     return
+        if not await self.check_channel_id(message):
+            return
         if not self.payment_methods_map:
             self.payment_methods_map = await self.get_payment_methods_map()
         message_parts = message.text.split(' ')
