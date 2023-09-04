@@ -129,7 +129,7 @@ class OperatorHelperBot:
             AND status = 'pending' 
             AND dt >= now() - INTERVAL 48 HOUR 
             ORDER BY dt DESC 
-            LIMIT 20, 30
+            LIMIT 20, 10
             '''
             try:
                 result = await self.get_data(query)
