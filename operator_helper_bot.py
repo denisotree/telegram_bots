@@ -68,8 +68,8 @@ class OperatorHelperBot:
         return result
 
     async def show_cancels(self, message: types.Message):
-        # if not await self.check_channel_id(message):
-        #     return
+        if not await self.check_channel_id(message):
+            return
         if not self.payment_methods_map:
             self.payment_methods_map = await self.get_payment_methods_map()
         message_parts = message.text.split(' ')
@@ -111,6 +111,40 @@ class OperatorHelperBot:
             except Exception as e:
                 await message.answer(f'Unexpected error - {e}')
 
+    async def show_pendings(self, message: types.Message):
+        if not await self.check_channel_id(message):
+            return
+        if not self.payment_methods_map:
+            self.payment_methods_map = await self.get_payment_methods_map()
+        message_parts = message.text.split(' ')
+        if len(message_parts) == 1 or not message_parts[1].isdigit():
+            await message.answer(Messages.AWAITED_VARS.format(awaited_vars=f'payment_method_id (int)'))
+        else:
+            payment_method_id = int(message_parts[1])
+
+            query = f'''
+            SELECT id, dt
+            FROM z_gotobill 
+            WHERE pay_method_id = {payment_method_id} 
+            AND status = 'pending' 
+            AND dt >= now() - INTERVAL 48 HOUR 
+            ORDER BY dt DESC 
+            LIMIT 20, 30
+            '''
+            try:
+                result = await self.get_data(query)
+                result_message = tabulate(
+                    [(row["dt"], row["id"]) for row in result],
+                    headers=['bill datetime', 'inner id'],
+                    tablefmt="github"
+                )
+                result_message = f'10 example pending transactions for payment_method {payment_method_id}\n<pre>{result_message}</pre>'
+                await message.answer(result_message)
+            except OperationalError:
+                await message.answer('Database error - look at the logs for more information')
+            except Exception as e:
+                await message.answer(f'Unexpected error - {e}')
+
     async def show_last_success_time(self, message: types.Message):
         if not await self.check_channel_id(message):
             return
@@ -133,6 +167,7 @@ class OperatorHelperBot:
 
         # Commands
         self.dp.register_message_handler(self.show_cancels, commands=['show_cancels'])
+        self.dp.register_message_handler(self.show_pendings, commands=['show_pendings'])
         self.dp.register_message_handler(self.show_last_success_time, commands=['show_last_success'])
 
         # Default
