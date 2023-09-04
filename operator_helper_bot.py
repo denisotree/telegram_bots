@@ -1,5 +1,6 @@
 import asyncio
 import os
+from sqlite3 import OperationalError
 from typing import Any, List, Dict
 
 import dotenv
@@ -32,7 +33,7 @@ class OperatorHelperBot:
 
         self.payment_methods_map = {}
 
-    @alru_cache(ttl=60 * 60 * 24)
+    # @alru_cache(ttl=60 * 60 * 24)
     async def get_payment_methods_map(self):
         query = """
         SELECT billing, GROUP_CONCAT(distinct id) as payment_methods
@@ -41,7 +42,7 @@ class OperatorHelperBot:
         """
 
         result = await self.get_data(query)
-        result = {row['billing'].lower(): map(int, row['payment_methods'].split(',')) for row in result}
+        result = {row['billing'].lower(): list(map(int, row['payment_methods'].split(','))) for row in result}
         return result
 
     async def check_channel_id(self, message: types.Message):
@@ -67,8 +68,8 @@ class OperatorHelperBot:
         return result
 
     async def show_cancels(self, message: types.Message):
-        if not await self.check_channel_id(message):
-            return
+        # if not await self.check_channel_id(message):
+        #     return
         if not self.payment_methods_map:
             self.payment_methods_map = await self.get_payment_methods_map()
         message_parts = message.text.split(' ')
@@ -96,14 +97,19 @@ class OperatorHelperBot:
             ORDER BY dt DESC 
             LIMIT 10
             '''
-            result = await self.get_data(query)
-            result_message = tabulate(
-                [(row["id"], row["pid"], row["cancel_reason_code"]) for row in result],
-                headers=['inner id', 'outer id', 'cancel code'],
-                tablefmt="github"
-            )
-            result_message = f'Last 10 cancel transactions for payment_method {payment_method_id}\n<pre>{result_message}</pre>'
-            await message.answer(result_message)
+            try:
+                result = await self.get_data(query)
+                result_message = tabulate(
+                    [(row["id"], row["pid"], row["cancel_reason_code"]) for row in result],
+                    headers=['inner id', 'outer id', 'cancel code'],
+                    tablefmt="github"
+                )
+                result_message = f'Last 10 cancel transactions for payment_method {payment_method_id}\n<pre>{result_message}</pre>'
+                await message.answer(result_message)
+            except OperationalError:
+                await message.answer('Database error - look at the logs for more information')
+            except Exception as e:
+                await message.answer(f'Unexpected error - {e}')
 
     async def show_last_success_time(self, message: types.Message):
         if not await self.check_channel_id(message):
