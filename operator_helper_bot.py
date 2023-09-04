@@ -75,6 +75,8 @@ class OperatorHelperBot:
                 pid_extract_schema = '$.refer'
             elif payment_method_id in self.payment_methods_map['octopays']:
                 pid_extract_schema = '$.data.internal_id'
+            elif payment_method_id in self.payment_methods_map['swiffy']:
+                pid_extract_schema = '$.callpay_transaction_id'
             query = f'''
             SELECT id, 
                    cancel_reason_code,
