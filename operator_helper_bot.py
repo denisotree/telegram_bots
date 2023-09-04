@@ -7,6 +7,7 @@ from aiogram import Bot, types, Dispatcher
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher.filters.state import StatesGroup, State
 from aiogram.utils import executor
+from async_lru import alru_cache
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 from tabulate import tabulate
@@ -29,15 +30,19 @@ class OperatorHelperBot:
         self.channel_id = TELEGRAM_CHANNEL_ID
         self.dp = Dispatcher(self.bot, storage=MemoryStorage())
 
-        self.payment_methods_map = {
-            'monetix': [145, 275, 276, 277, 278, 282, 283, 284, 285, 286, 287, 288, 289, 292, 297, 301, 302, 303, 305,
-                        306, 307, 308, 309, 310, 311, 318, 319, 332, 333, 334, 335, 340, 341, 342, 343, 348, 349, 350,
-                        351, 352, 353, 354, 363, 369, 370, 371, 372, 373, 374, 375, 376, 377, 381, 387, 388, 389, 393,
-                        394, 395, 397, 399, 401, 443, 457, 467],
-            'expay': [465, 466],
-            'octopays': [402, 403, 404, 422, 423, 424, 425, 426, 427, 428, 429, 459, 460, 461, 462],
-            'swiffy': [331]
-        }
+        self.payment_methods_map = {}
+
+    @alru_cache(ttl=60 * 60 * 24)
+    async def get_payment_methods_map(self):
+        query = """
+        SELECT billing, GROUP_CONCAT(distinct id) as payment_methods
+        FROM PaymentMethods
+        GROUP BY billing
+        """
+
+        result = await self.get_data(query)
+        result = {row['billing'].lower(): map(int, row['payment_methods'].split(',')) for row in result}
+        return result
 
     async def check_channel_id(self, message: types.Message):
         if message.chat.id != int(self.channel_id):
@@ -62,8 +67,10 @@ class OperatorHelperBot:
         return result
 
     async def show_cancels(self, message: types.Message):
-        if not await self.check_channel_id(message):
-            return
+        # if not await self.check_channel_id(message):
+        #     return
+        if not self.payment_methods_map:
+            self.payment_methods_map = await self.get_payment_methods_map()
         message_parts = message.text.split(' ')
         if len(message_parts) == 1 or not message_parts[1].isdigit():
             await message.answer(Messages.AWAITED_VARS.format(awaited_vars=f'payment_method_id (int)'))
@@ -82,7 +89,7 @@ class OperatorHelperBot:
             SELECT id, 
                    cancel_reason_code,
                    JSON_EXTRACT(response, '{pid_extract_schema}') pid 
-            FROM rdv6088.z_gotobill 
+            FROM z_gotobill 
             WHERE pay_method_id = {payment_method_id} 
             AND status = 'cancel' 
             AND dt >= now() - INTERVAL 48 HOUR 
@@ -106,7 +113,7 @@ class OperatorHelperBot:
             await message.answer(Messages.AWAITED_VARS.format(awaited_vars=f'payment_method_id (int)'))
         else:
             payment_method_id = int(message_parts[1])
-            query = f"SELECT dt FROM rdv6088.z_gotobill WHERE pay_method_id = {payment_method_id} AND status = 'success' ORDER BY dt DESC LIMIT 1"
+            query = f"SELECT dt FROM z_gotobill WHERE pay_method_id = {payment_method_id} AND status = 'success' ORDER BY dt DESC LIMIT 1"
             result = await self.get_data(query)
             if len(result):
                 await message.answer(f'Last success time of payment method {payment_method_id}: <code>{result[0]["dt"]} UTC</code>')
