@@ -67,6 +67,28 @@ class OperatorHelperBot:
 
         return result
 
+    async def get_last_transaction_time(self, payment_method_id: int, transaction_type: str = '') -> str:
+        last_transaction_time_query = f'''
+        SELECT dt
+        FROM z_gotobill
+        WHERE pay_method_id = {payment_method_id}
+        {"AND status = '{transaction_type}'" if transaction_type else ''}
+        ORDER BY dt DESC
+        LIMIT 1
+        '''
+        last_transaction_time = await self.get_data(last_transaction_time_query)
+        return last_transaction_time[0]['dt']
+
+    async def get_period_transactions(self, payment_method_id: int, period: str) -> List[Dict[str, Any]]:
+        period_transactions_query = f'''
+        SELECT id, dt, status
+        FROM z_gotobill
+        WHERE pay_method_id = {payment_method_id}
+        AND dt >= now() - INTERVAL {period}
+        '''
+        period_transactions = await self.get_data(period_transactions_query)
+        return period_transactions
+
     async def show_cancels(self, message: types.Message):
         if not await self.check_channel_id(message):
             return
@@ -87,7 +109,8 @@ class OperatorHelperBot:
             elif payment_method_id in self.payment_methods_map['swiffy']:
                 pid_extract_schema = '$.callpay_transaction_id'
             query = f'''
-            SELECT id, 
+            SELECT id,
+                   dt,
                    cancel_reason_code,
                    JSON_EXTRACT(response, '{pid_extract_schema}') pid 
             FROM z_gotobill 
@@ -100,8 +123,8 @@ class OperatorHelperBot:
             try:
                 result = await self.get_data(query)
                 result_message = tabulate(
-                    [(row["id"], row["pid"], row["cancel_reason_code"]) for row in result],
-                    headers=['inner id', 'outer id', 'cancel code'],
+                    [(row['dt'], row["id"], row["pid"], row["cancel_reason_code"]) for row in result],
+                    headers=['bill datetime', 'inner id', 'outer id', 'cancel code'],
                     tablefmt="github"
                 )
                 result_message = f'Last 10 cancel transactions for payment_method {payment_method_id}\n<pre>{result_message}</pre>'
@@ -153,12 +176,44 @@ class OperatorHelperBot:
             await message.answer(Messages.AWAITED_VARS.format(awaited_vars=f'payment_method_id (int)'))
         else:
             payment_method_id = int(message_parts[1])
-            query = f"SELECT dt FROM z_gotobill WHERE pay_method_id = {payment_method_id} AND status = 'success' ORDER BY dt DESC LIMIT 1"
-            result = await self.get_data(query)
+            result = await self.get_last_transaction_time(payment_method_id, 'success')
             if len(result):
                 await message.answer(f'Last success time of payment method {payment_method_id}: <code>{result[0]["dt"]} UTC</code>')
             else:
                 await message.answer(f'Not found success transactions for {payment_method_id}')
+
+    async def get_method_info(self, message: types.Message):
+        if not await self.check_channel_id(message):
+            return
+        message_parts = message.text.split(' ')
+        if len(message_parts) == 1 or not message_parts[1].isdigit():
+            await message.answer(Messages.AWAITED_VARS.format(awaited_vars=f'payment_method_id (int)'))
+        else:
+            payment_method_id = int(message_parts[1])
+            status_query = f"SELECT name, active FROM PaymentMethods WHERE id = {payment_method_id}"
+            status_result = await self.get_data(status_query)
+            if len(status_result):
+                method_name = status_result[0]['name']
+                method_status = status_result[0]['active']
+            else:
+                await message.answer(f'Not found payment method {payment_method_id}')
+                return
+            last_try_time = await self.get_last_transaction_time(payment_method_id)
+            last_success_time = await self.get_last_transaction_time(payment_method_id, 'success')
+            last_hour_transactions = await self.get_period_transactions(payment_method_id, '1 HOUR')
+            last_hour_success = len(filter(lambda x: x['status'] == 'success', last_hour_transactions))
+            last_hour_cancels = len(filter(lambda x: x['status'] == 'cancel', last_hour_transactions))
+            last_hour_pendings = len(filter(lambda x: x['status'] == 'pending', last_hour_transactions))
+
+            await message.answer(f'''
+            <b>Payment method:</b> <code>{method_name}[{payment_method_id}]</code>
+            <b>Status:</b> <code>{'enabled' if method_status else 'disabled'}</code>
+            <b>Last try:</b> <code>{last_try_time} UTC</code>
+            <b>Last success:</b> <code>{last_success_time} UTC</code>
+            <b>Last hour success count:</b> <code>{last_hour_success}</code>
+            <b>Last hour cancel count:</b> <code>{last_hour_cancels}</code>
+            <b>Last hour pending count:</b> <code>{last_hour_pendings}</code>
+            ''')
 
     async def default_handle(self, message: types.Message):
         ...
@@ -169,6 +224,7 @@ class OperatorHelperBot:
         self.dp.register_message_handler(self.show_cancels, commands=['show_cancels'])
         self.dp.register_message_handler(self.show_pendings, commands=['show_pendings'])
         self.dp.register_message_handler(self.show_last_success_time, commands=['show_last_success'])
+        self.dp.register_message_handler(self.get_method_info, commands=['get_info'])
 
         # Default
         self.dp.register_message_handler(self.default_handle, regexp='.')
