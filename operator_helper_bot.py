@@ -208,12 +208,12 @@ class OperatorHelperBot:
 
             await message.answer(f'''
             <b>Payment method:</b> <code>{method_name}[{payment_method_id}]</code>
-            <b>Status:</b> <code>{'enabled' if method_status else 'disabled'}</code>
-            <b>Last try:</b> <code>{last_try_time} UTC</code>
-            <b>Last success:</b> <code>{last_success_time} UTC</code>
-            <b>Last hour success count:</b> <code>{last_hour_success}</code>
-            <b>Last hour cancel count:</b> <code>{last_hour_cancels}</code>
-            <b>Last hour pending count:</b> <code>{last_hour_pendings}</code>
+<b>Status:</b> <code>{'enabled' if method_status else 'disabled'}</code>
+<b>Last try:</b> <code>{last_try_time} UTC</code>
+<b>Last success:</b> <code>{last_success_time} UTC</code>
+<b>Last hour success count:</b> <code>{last_hour_success}</code>
+<b>Last hour cancel count:</b> <code>{last_hour_cancels}</code>
+<b>Last hour pending count:</b> <code>{last_hour_pendings}</code>
             ''')
 
     async def default_handle(self, message: types.Message):
