@@ -202,9 +202,9 @@ class OperatorHelperBot:
             last_try_time = await self.get_last_transaction_time(payment_method_id)
             last_success_time = await self.get_last_transaction_time(payment_method_id, 'success')
             last_hour_transactions = await self.get_period_transactions(payment_method_id, '1 HOUR')
-            last_hour_success = len(filter(lambda x: x['status'] == 'success', last_hour_transactions))
-            last_hour_cancels = len(filter(lambda x: x['status'] == 'cancel', last_hour_transactions))
-            last_hour_pendings = len(filter(lambda x: x['status'] == 'pending', last_hour_transactions))
+            last_hour_success = len(list(filter(lambda x: x['status'] == 'success', last_hour_transactions)))
+            last_hour_cancels = len(list(filter(lambda x: x['status'] == 'cancel', last_hour_transactions)))
+            last_hour_pendings = len(list(filter(lambda x: x['status'] == 'pending', last_hour_transactions)))
 
             await message.answer(f'''
             <b>Payment method:</b> <code>{method_name}[{payment_method_id}]</code>
