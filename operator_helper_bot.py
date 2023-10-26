@@ -68,11 +68,12 @@ class OperatorHelperBot:
         return result
 
     async def get_last_transaction_time(self, payment_method_id: int, transaction_type: str = '') -> str:
+        status_str = f"AND status = '{transaction_type}'" if transaction_type else ''
         last_transaction_time_query = f'''
         SELECT dt
         FROM z_gotobill
         WHERE pay_method_id = {payment_method_id}
-        {"AND status = '{transaction_type}'" if transaction_type else ''}
+        {status_str}
         ORDER BY dt DESC
         LIMIT 1
         '''
