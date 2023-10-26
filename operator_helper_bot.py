@@ -191,11 +191,13 @@ class OperatorHelperBot:
             await message.answer(Messages.AWAITED_VARS.format(awaited_vars=f'payment_method_id (int)'))
         else:
             payment_method_id = int(message_parts[1])
-            status_query = f"SELECT name, active FROM PaymentMethods WHERE id = {payment_method_id}"
+            status_query = f"SELECT name, active, is_temporarily_down FROM PaymentMethods WHERE id = {payment_method_id}"
             status_result = await self.get_data(status_query)
             if len(status_result):
                 method_name = status_result[0]['name']
-                method_status = status_result[0]['active']
+                method_active = status_result[0]['active']
+                method_temporarily_down = status_result[0]['is_temporarily_down']
+                method_status = 'enabled' if method_active and not method_temporarily_down else 'disabled'
             else:
                 await message.answer(f'Not found payment method {payment_method_id}')
                 return
@@ -208,7 +210,7 @@ class OperatorHelperBot:
 
             await message.answer(f'''
             <b>Payment method:</b> <code>{method_name}[{payment_method_id}]</code>
-<b>Status:</b> <code>{'enabled' if method_status else 'disabled'}</code>
+<b>Status:</b> <code>{method_status}</code>
 <b>Last try:</b> <code>{last_try_time} UTC</code>
 <b>Last success:</b> <code>{last_success_time} UTC</code>
 <b>Last hour success count:</b> <code>{last_hour_success}</code>
